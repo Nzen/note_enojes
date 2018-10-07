@@ -94,79 +94,81 @@
 		</dependency>
 	</dependencies>
 	<build>
-	    <plugins>
-		    <!-- use java 10 jdk, if not default -->
-			<plugin>
-				<groupId>
-					org.apache.maven.plugins
-				</groupId>
-				<artifactId>
-					maven-toolchains-plugin
-				</artifactId>
-				<version>
-					1.1
-				</version>
-				<configuration>
-					<toolchains>
-						<jdk>
-							<version>
-								[10,)
-							</version>
-						</jdk>
-					</toolchains>
-				</configuration>
-				<executions>
-					<execution>
-						<goals>
+		<pluginManagement>
+		    <plugins>
+			    <!-- use java 10 jdk, if not default -->
+				<plugin>
+					<groupId>
+						org.apache.maven.plugins
+					</groupId>
+					<artifactId>
+						maven-toolchains-plugin
+					</artifactId>
+					<version>
+						1.1
+					</version>
+					<configuration>
+						<toolchains>
+							<jdk>
+								<version>
+									[10,)
+								</version>
+							</jdk>
+						</toolchains>
+					</configuration>
+					<executions>
+						<execution>
+							<goals>
+								<goal>
+									toolchain
+								</goal>
+							</goals>
+						</execution>
+					</executions>
+				</plugin>
+		    	<!-- make source jar -->
+			    <plugin>
+					<groupId>
+						org.apache.maven.plugins
+					</groupId>
+					<artifactId>
+						maven-source-plugin
+					</artifactId>
+					<version>
+						3.0.1
+					</version>
+					<executions>
+						<execution>
+							<id>
+								attach-sources
+							</id>
+							<goals>
 							<goal>
-								toolchain
+								jar
 							</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-	    	<!-- make source jar -->
-		    <plugin>
-				<groupId>
-					org.apache.maven.plugins
-				</groupId>
-				<artifactId>
-					maven-source-plugin
-				</artifactId>
-				<version>
-					3.0.1
-				</version>
-				<executions>
-					<execution>
-						<id>
-							attach-sources
-						</id>
-						<goals>
-						<goal>
-							jar
-						</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-	    	<!-- skip tests without remembering -DskipTests -->
-			<plugin>
-				<groupId>
-					org.apache.maven.plugins
-				</groupId>
-				<artifactId>
-					maven-surefire-plugin
-				</artifactId>
-				<version>
-					2.12.4
-				</version>
-				<configuration>
-					<skipTests>
-						true
-					</skipTests>
-				</configuration>
-			</plugin>
+							</goals>
+						</execution>
+					</executions>
+				</plugin>
+		    	<!-- skip tests without remembering -DskipTests -->
+				<plugin>
+					<groupId>
+						org.apache.maven.plugins
+					</groupId>
+					<artifactId>
+						maven-surefire-plugin
+					</artifactId>
+					<version>
+						2.12.4
+					</version>
+					<configuration>
+						<skipTests>
+							true
+						</skipTests>
+					</configuration>
+				</plugin>
 		</plugins>
+		</pluginManagement>
 	</build>
 	<properties>
 	    <!-- jdk v3 is the maven default -->
