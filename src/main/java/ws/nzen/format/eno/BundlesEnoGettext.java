@@ -8,8 +8,8 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.text.MessageFormat;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.stream.Stream;
 
@@ -17,16 +17,31 @@ import java.util.stream.Stream;
 public class BundlesEnoGettext
 {
 	private static final String cl = "beg.";
+	public static final String begPropInDir = "input_directory",
+			begPropOutDir = "output_directory",
+			begPropSeparate = "separate_by_category",
+			begPropStyle = "resource_bundle_style",
+			begPropPackageDir = "output_into_package",
+			begPropPackage = "package";
+			// begPropIdMap = "create_id_map"; 
 	private static final String rbmFile = "beg_messages",
 			rbmBd = "bundleDirectory",
 			rbmBol = "bundleOneLocale";
 	private static final String categoryKey = "# Message group ",
 			messageKeyKey = "msgid", messageValueKey = "msgstr";
 	private ResourceBundle rbm;
+	private Properties config;
 
 
 	public BundlesEnoGettext()
 	{
+		this( new Properties() );
+	}
+
+
+	public BundlesEnoGettext( Properties sessionConfig )
+	{
+		setConfig( sessionConfig );
 		rbm = ResourceBundle.getBundle( rbmFile );
 	}
 
@@ -68,9 +83,9 @@ public class BundlesEnoGettext
 				}
 				else if ( line.startsWith( messageValueKey ) )
 				{
-					System.out.println( line );
+					//System.out.println( line );
 				}
-				// else, skip, it's a comment or blank
+				// else, skip, it's an unrelated comment or blank
 			}
 		}
 		catch ( IOException ie )
@@ -91,6 +106,16 @@ for file in folder that filename ends with po,
   else if line starts with msgstr, end the current message, put in current map
   
 	 */
+
+
+	public Properties getConfig()
+	{
+		return config;
+	}
+	public void setConfig( Properties config )
+	{
+		this.config = config;
+	}
 
 
 }
