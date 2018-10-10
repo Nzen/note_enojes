@@ -8,6 +8,8 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.text.MessageFormat;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.ResourceBundle;
@@ -66,24 +68,30 @@ public class BundlesEnoGettext
 	public void bundleOneLocale( Path poFile )
 	{
 		final String here = cl +"bol";
-		String className, msgKey;
-		Map<String,String> messages = new HashMap<>();
+		final int wrapperLen = " \"".length(), trailingQuote;
+		String className= "", category = "", msgKey= "", msgValue= "";
+		Map<String,List<String>> messages = new HashMap<>();
 		try
 		{
 			for ( String line : Files.readAllLines( poFile, Charset.forName( "UTF-8" ) ) )
 			{
 				if ( line.startsWith( categoryKey ) )
 				{
-					System.out.println( line );
+					category = line; // NOTE currently using because it has a comment prefix
+					messages.put( category, new LinkedList<>() );
 				}
 				else if ( line.startsWith( messageKeyKey ) )
 				{
 					// substring to just that part
-					//msgKey = 
+					msgKey = line.substring( messageKeyKey.length() + wrapperLen, line.length() -1 );
+					msgKey = msgKey.replaceAll( "'", "''" );
 				}
 				else if ( line.startsWith( messageValueKey ) )
 				{
-					//System.out.println( line );
+					msgValue = line.substring( messageValueKey.length() + wrapperLen, line.length() -1 );
+					msgValue = msgValue.replaceAll( "'", "''" );
+					// IMPROVE handle variables, ex [FIELDSET_NAME]
+					messages.get( category ).add( msgKey +" = "+ msgValue );
 				}
 				// else, skip, it's an unrelated comment or blank
 			}
@@ -93,6 +101,21 @@ public class BundlesEnoGettext
 			MessageFormat problem = new MessageFormat( rbm.getString( rbmBol ) );
 			System.err.println( problem.format( new Object[]{ here, poFile, ie } ) );
 		}
+		StringBuilder fileContent = new StringBuilder();
+		for ( String currCategory : messages.keySet() )
+		{
+			fileContent.append( System.lineSeparator() );
+			fileContent.append( currCategory );
+			fileContent.append( System.lineSeparator() );
+			List<String> pairs = messages.get( currCategory );
+			for ( String onePair : pairs )
+			{
+				fileContent.append( onePair );
+				fileContent.append( System.lineSeparator() );
+			}
+			// if config.separate files write separately
+		}
+		writeTo( poFile, fileContent.toString() );// FIX shortcut, gen actual name later
 	}
 	/*
 (or config that tells me more stuff, ugh, this can spin out but I just need the simple bit firstI
@@ -104,8 +127,13 @@ for file in folder that filename ends with po,
   if line starts with 'message group' comment, write current map to file(s), start new current map
   else if line starts with msgid, start new message
   else if line starts with msgstr, end the current message, put in current map
-  
 	 */
+
+	private void writeTo( Path destination, String entireContent )
+	{
+		System.out.println( "\t"+ destination );
+		System.out.println( entireContent );
+	}
 
 
 	public Properties getConfig()

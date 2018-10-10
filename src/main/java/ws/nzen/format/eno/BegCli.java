@@ -36,7 +36,7 @@ public class BegCli
 	private ResourceBundle rbm;
 	private boolean verbose = false; // IMPROVE use or discard
 
-	/** @param args */
+
 	public static void main( String[] args )
 	{
 		ResourceBundle rbm = ResourceBundle.getBundle( rbmFile );
