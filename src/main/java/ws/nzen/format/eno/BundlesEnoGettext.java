@@ -1,11 +1,16 @@
 /** see ../../../../../LICENSE for release details */
 package ws.nzen.format.eno;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -28,7 +33,11 @@ public class BundlesEnoGettext
 			// begPropIdMap = "create_id_map"; 
 	private static final String rbmFile = "beg_messages",
 			rbmBd = "bundleDirectory",
-			rbmBol = "bundleOneLocale";
+			rbmBol = "bundleOneLocale",
+			rbmDf = "destinationDirectory",
+			rbmDsf = "deleteSingularFile",
+			rbmEs = "emitSuccess",
+			rbmEf = "emitFailure";
 	private static final String categoryKey = "# Message group ",
 			messageKeyKey = "msgid", messageValueKey = "msgstr";
 	private ResourceBundle rbm;
@@ -51,11 +60,13 @@ public class BundlesEnoGettext
 	public void bundleDirectory( Path dir )
 	{
 		final String here = cl +"bd";
+		final Path destinationFolder = sessionDestinationFolder( dir );
 		final PathMatcher onlyPo = dir.getFileSystem().getPathMatcher( "glob:**/*.po" );
 		try
 		( final Stream<Path> fileChannel = Files.list( dir ) )
 		{
-			fileChannel.filter( onlyPo::matches ).forEach( ( poFile ) -> bundleOneLocale( poFile ) );
+			fileChannel.filter( onlyPo::matches ).forEach(
+					( poFile ) -> bundleOneLocale( poFile, destinationFolder ) );
 		}
 		catch ( IOException ie )
 		{
@@ -65,11 +76,11 @@ public class BundlesEnoGettext
 	}
 
 
-	public void bundleOneLocale( Path poFile )
+	public void bundleOneLocale( Path poFile, Path targetFolder )
 	{
 		final String here = cl +"bol";
-		final int wrapperLen = " \"".length(), trailingQuote;
-		String className= "", category = "", msgKey= "", msgValue= "";
+		final int wrapperLen = " \"".length();
+		String category = "", msgKey= "", msgValue= "";
 		Map<String,List<String>> messages = new HashMap<>();
 		try
 		{
@@ -77,18 +88,21 @@ public class BundlesEnoGettext
 			{
 				if ( line.startsWith( categoryKey ) )
 				{
-					category = line; // NOTE currently using because it has a comment prefix
+					category = line.substring( line
+							.indexOf( "'" ) +1, line.length() -1 ); // NOTE between quotes
 					messages.put( category, new LinkedList<>() );
 				}
 				else if ( line.startsWith( messageKeyKey ) )
 				{
 					// substring to just that part
-					msgKey = line.substring( messageKeyKey.length() + wrapperLen, line.length() -1 );
+					msgKey = line.substring( messageKeyKey
+							.length() + wrapperLen, line.length() -1 );
 					msgKey = msgKey.replaceAll( "'", "''" );
 				}
 				else if ( line.startsWith( messageValueKey ) )
 				{
-					msgValue = line.substring( messageValueKey.length() + wrapperLen, line.length() -1 );
+					msgValue = line.substring( messageValueKey
+							.length() + wrapperLen, line.length() -1 );
 					msgValue = msgValue.replaceAll( "'", "''" );
 					// IMPROVE handle variables, ex [FIELDSET_NAME]
 					messages.get( category ).add( msgKey +" = "+ msgValue );
@@ -101,10 +115,52 @@ public class BundlesEnoGettext
 			MessageFormat problem = new MessageFormat( rbm.getString( rbmBol ) );
 			System.err.println( problem.format( new Object[]{ here, poFile, ie } ) );
 		}
+		emitResourceBundles( messages, poFile, targetFolder );
+	}
+
+
+	private Path filenamefor( Path original, Path targetFolder, String category )
+	{
+		StringBuilder filename = new StringBuilder( category );
+		filename.append( "_" );
+		String language = original.getFileName().toString();
+		filename.append( language.substring( 0, language.lastIndexOf( '.' ) ) );
+		String extension = config.getProperty( begPropStyle, "properties" )
+				.toLowerCase().equals( "list" ) ? ".java" : ".properties";
+		filename.append( extension );
+		Path result = targetFolder.resolve( filename.toString() );
+		return result;
+	}
+
+
+	private void emitResourceBundles( Map<String,List<String>> messages,
+			Path poFile, Path targetFolder )
+	{
+		final String here = cl +"erb";
+		String category = "messages";
+		boolean separateFilePerCategory = config
+				.getProperty( begPropSeparate, "false" )
+				.toLowerCase().equals( "true" );
+		if ( ! separateFilePerCategory )
+		{
+			Path previousCommonFile = filenamefor(
+					poFile, targetFolder, category );
+			try
+			{
+				Files.deleteIfExists( previousCommonFile );
+			}
+			catch ( IOException ie )
+			{
+				MessageFormat problem = new MessageFormat( rbm.getString( rbmDsf ) );
+				System.err.println( problem.format( new Object[]{
+						here, previousCommonFile, ie } ) );
+			}
+		}
 		StringBuilder fileContent = new StringBuilder();
 		for ( String currCategory : messages.keySet() )
 		{
 			fileContent.append( System.lineSeparator() );
+			fileContent.append( "# " );
 			fileContent.append( currCategory );
 			fileContent.append( System.lineSeparator() );
 			List<String> pairs = messages.get( currCategory );
@@ -113,26 +169,68 @@ public class BundlesEnoGettext
 				fileContent.append( onePair );
 				fileContent.append( System.lineSeparator() );
 			}
-			// if config.separate files write separately
+			if ( separateFilePerCategory )
+			{
+				category = currCategory;
+			}
+			writeTo( filenamefor( poFile, targetFolder, category ),
+					fileContent.toString(), ! separateFilePerCategory );
+			fileContent.delete( 0, fileContent.length() );
 		}
-		writeTo( poFile, fileContent.toString() );// FIX shortcut, gen actual name later
 	}
-	/*
-(or config that tells me more stuff, ugh, this can spin out but I just need the simple bit firstI
 
-get folder from cli or assume it's the current folder
-for file in folder that filename ends with po,
- open file
- for line in file,
-  if line starts with 'message group' comment, write current map to file(s), start new current map
-  else if line starts with msgid, start new message
-  else if line starts with msgstr, end the current message, put in current map
-	 */
 
-	private void writeTo( Path destination, String entireContent )
+	private Path sessionDestinationFolder( Path fallback )
 	{
-		System.out.println( "\t"+ destination );
-		System.out.println( entireContent );
+		final String here = cl +"sdf";
+		final String currentDir = ( File.pathSeparator.equals( ":" ) )
+				? "." : ""; // NOTE windows / linux current dir
+		try
+		{
+			String basePath = config.getProperty( begPropOutDir, currentDir );
+			if ( config.getProperty( begPropPackageDir, "false" )
+					.toLowerCase().equals( "true" )
+				&& ! config.getProperty( begPropPackage, "" ).isEmpty() )
+			{
+				if ( ! basePath.endsWith( File.separator ) )
+				{
+					basePath += File.separator;
+				}
+				basePath += config.getProperty( begPropPackage )
+						.replaceAll( "\\.", File.separator );
+			}
+			return Paths.get( basePath );
+		}
+		catch ( InvalidPathException ipe )
+		{
+			String folderAttempted = config.getProperty( begPropOutDir, currentDir );
+			MessageFormat problem = new MessageFormat( rbm.getString( rbmDf ) );
+			System.err.println( problem.format( new Object[]{
+					here, folderAttempted, ipe } ) );
+			return fallback;
+		}
+	}
+
+
+	private void writeTo( Path destination,
+			String entireContent, boolean append )
+	{
+		final String here = cl +"wt";
+		OpenOption whetherAppend = ( append )
+				? StandardOpenOption.APPEND : StandardOpenOption.TRUNCATE_EXISTING;
+		try
+		{
+			Files.createDirectories( destination.getParent() );
+			Files.write( destination, entireContent.getBytes(),
+					StandardOpenOption.CREATE, whetherAppend );
+			MessageFormat feedback = new MessageFormat( rbm.getString( rbmEs ) );
+			System.out.println( feedback.format( new Object[]{ here, destination } ) );
+		}
+		catch ( IOException ie )
+		{
+			MessageFormat problem = new MessageFormat( rbm.getString( rbmEf ) );
+			System.err.println( problem.format( new Object[]{ here, destination, ie } ) );
+		}
 	}
 
 
