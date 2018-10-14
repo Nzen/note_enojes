@@ -16,8 +16,10 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Properties;
 import java.util.ResourceBundle;
+import java.util.TreeMap;
 import java.util.stream.Stream;
 
 /** Convert lang.po files from eno-locale to ListResourceBundle java files */
@@ -29,7 +31,8 @@ public class BundlesEnoGettext
 			begPropSeparate = "separate_by_category",
 			begPropStyle = "resource_bundle_style",
 			begPropPackageDir = "output_into_package",
-			begPropPackage = "package";
+			begPropPackage = "java_package",
+			begPropReplaceVars = "replace_variables";
 			// begPropIdMap = "create_id_map"; 
 	private static final String rbmFile = "beg_messages",
 			rbmBd = "bundleDirectory",
@@ -81,6 +84,8 @@ public class BundlesEnoGettext
 		final String here = cl +"bol";
 		final int wrapperLen = " \"".length();
 		String category = "", msgKey= "", msgValue= "";
+		boolean shouldReplaceVariables = config.getProperty(
+				begPropReplaceVars, "false" ).toLowerCase().equals( "true" );
 		Map<String,List<String>> messages = new HashMap<>();
 		try
 		{
@@ -104,7 +109,10 @@ public class BundlesEnoGettext
 					msgValue = line.substring( messageValueKey
 							.length() + wrapperLen, line.length() -1 );
 					msgValue = msgValue.replaceAll( "'", "''" );
-					// IMPROVE handle variables, ex [FIELDSET_NAME]
+					if ( shouldReplaceVariables )
+					{
+						msgValue = replaceVarsForMessageFormat( msgValue );
+					}
 					messages.get( category ).add( msgKey +" = "+ msgValue );
 				}
 				// else, skip, it's an unrelated comment or blank
@@ -116,6 +124,55 @@ public class BundlesEnoGettext
 			System.err.println( problem.format( new Object[]{ here, poFile, ie } ) );
 		}
 		emitResourceBundles( messages, poFile, targetFolder );
+	}
+
+
+	/** replaces known variables (ex [LINE]) with escape flags ready
+	 * for use with MessageFormat. */
+	private String replaceVarsForMessageFormat( String msgValue )
+	{
+		if ( msgValue == null || msgValue.isEmpty() || ! msgValue.contains( "[" ) )
+		{
+			return msgValue;
+		}
+		final int likelyIncrease = 20;
+		StringBuilder changedValue = new StringBuilder(
+				msgValue.length() + likelyIncrease );
+		int indOfReplace = 0, prevInd = 0, variableInd = 0;
+		NavigableMap<Integer, EnoLocaleVariables> indType = new TreeMap<>();
+		while ( true )
+		{
+			indType.clear();
+			for ( EnoLocaleVariables var : EnoLocaleVariables.values() )
+			{
+				indOfReplace = msgValue.indexOf( var.getTextForm(), prevInd );
+				if ( indOfReplace >= 0 )
+				{
+					indType.put( indOfReplace, var );
+				}
+			}
+			if ( indType.isEmpty() )
+			{
+				changedValue.append( msgValue.substring( prevInd ) );
+				break;
+			}
+			else
+			{
+				indOfReplace = indType.firstKey();
+				EnoLocaleVariables currVar = indType.get( indOfReplace );
+				changedValue.append( msgValue.substring( prevInd, indOfReplace ) );
+				changedValue.append( "{" );
+				changedValue.append( Integer.toString( variableInd ) );
+				if ( currVar.hasTypeInfo() )
+				{
+					changedValue.append( currVar.getSupplement() );	
+				}
+				changedValue.append( "}" );
+				variableInd++;
+				prevInd = indOfReplace + currVar.getTextForm().length();
+			}
+		}
+		return changedValue.toString();
 	}
 
 
