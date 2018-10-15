@@ -1,3 +1,4 @@
+
 /** see ../../../../../LICENSE for release details */
 package ws.nzen.format.eno;
 
@@ -40,7 +41,8 @@ public class BundlesEnoGettext
 			rbmDf = "destinationDirectory",
 			rbmDsf = "deleteSingularFile",
 			rbmEs = "emitSuccess",
-			rbmEf = "emitFailure";
+			rbmEf = "emitFailure",
+			rbmTdne = "templateDoesNotExist";
 	private static final String categoryKey = "# Message group ",
 			messageKeyKey = "msgid", messageValueKey = "msgstr";
 	private ResourceBundle rbm;
@@ -86,6 +88,8 @@ public class BundlesEnoGettext
 		String category = "", msgKey= "", msgValue= "";
 		boolean shouldReplaceVariables = config.getProperty(
 				begPropReplaceVars, "false" ).toLowerCase().equals( "true" );
+		boolean resourceIsProperties = config.getProperty( begPropStyle, "properties" )
+				.toLowerCase().equals( "properties" );
 		Map<String,List<String>> messages = new HashMap<>();
 		try
 		{
@@ -113,7 +117,16 @@ public class BundlesEnoGettext
 					{
 						msgValue = replaceVarsForMessageFormat( msgValue );
 					}
-					messages.get( category ).add( msgKey +" = "+ msgValue );
+					if ( resourceIsProperties )
+					{
+						messages.get( category ).add( msgKey +" = "+ msgValue );
+					}
+					else
+					{
+						// { "key", "value" },
+						messages.get( category ).add(
+								"{\""+ msgKey +"\", \""+ msgValue +"\"}," );
+					}
 				}
 				// else, skip, it's an unrelated comment or blank
 			}
@@ -123,7 +136,7 @@ public class BundlesEnoGettext
 			MessageFormat problem = new MessageFormat( rbm.getString( rbmBol ) );
 			System.err.println( problem.format( new Object[]{ here, poFile, ie } ) );
 		}
-		emitResourceBundles( messages, poFile, targetFolder );
+		emitResourceBundles( messages, poFile, targetFolder, resourceIsProperties );
 	}
 
 
@@ -191,10 +204,10 @@ public class BundlesEnoGettext
 
 
 	private void emitResourceBundles( Map<String,List<String>> messages,
-			Path poFile, Path targetFolder )
+			Path poFile, Path targetFolder, boolean asProperties )
 	{
 		final String here = cl +"erb";
-		String category = "messages";
+		String category = "Messages";
 		boolean separateFilePerCategory = config
 				.getProperty( begPropSeparate, "false" )
 				.toLowerCase().equals( "true" );
@@ -213,6 +226,23 @@ public class BundlesEnoGettext
 						here, previousCommonFile, ie } ) );
 			}
 		}
+		if ( asProperties )
+		{
+			emitAsProperties( messages, poFile, targetFolder,
+					separateFilePerCategory, category );
+		}
+		else
+		{
+			emitAsList( messages, poFile, targetFolder,
+					separateFilePerCategory, category );
+		}
+	}
+
+
+	private void emitAsProperties( Map<String,List<String>> messages,
+			Path poFile, Path targetFolder,
+			boolean separateFiles, String category )
+	{
 		StringBuilder fileContent = new StringBuilder();
 		for ( String currCategory : messages.keySet() )
 		{
@@ -226,14 +256,26 @@ public class BundlesEnoGettext
 				fileContent.append( onePair );
 				fileContent.append( System.lineSeparator() );
 			}
-			if ( separateFilePerCategory )
+			if ( separateFiles )
 			{
 				category = currCategory;
 			}
 			writeTo( filenamefor( poFile, targetFolder, category ),
-					fileContent.toString(), ! separateFilePerCategory );
+					fileContent.toString(), ! separateFiles );
 			fileContent.delete( 0, fileContent.length() );
 		}
+	}
+
+
+	private void emitAsList( Map<String,List<String>> messages,
+			Path poFile, Path targetFolder,
+			boolean separateFiles, String category )
+	{
+		String lrbUpperHalf = templateForListResourceBundle();
+		String lrbLowerHalf = "{\"IMPROVE\",\"b.e.g. should handle better\"}\t\t};\n\t}\n}";
+		StringBuilder fileContent = new StringBuilder();
+		//for ( int ind )
+		
 	}
 
 
@@ -266,6 +308,27 @@ public class BundlesEnoGettext
 					here, folderAttempted, ipe } ) );
 			return fallback;
 		}
+	}
+
+
+	private String templateForListResourceBundle()
+	{
+		String here = cl +"tflrb";
+		String templatePath = "template_lrb_class_upper.txt";
+		Path templateOnClasspath = null;
+		try
+		{
+			templateOnClasspath = Paths.get( templatePath );
+		}
+		catch ( InvalidPathException ipe )
+		{
+			MessageFormat problem = new MessageFormat( rbm.getString( rbmBol ) );
+			System.err.println( problem.format(
+					new Object[]{ here, templatePath, ipe } ) );
+		}
+		String templateBody = null;
+		//templateBody = Files.
+		throw new RuntimeException( "not yet implemented" );
 	}
 
 
