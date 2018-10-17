@@ -33,7 +33,8 @@ public class BundlesEnoGettext
 			begPropStyle = "resource_bundle_style",
 			begPropPackageDir = "output_into_package",
 			begPropPackage = "java_package",
-			begPropReplaceVars = "replace_variables";
+			begPropReplaceVars = "replace_variables",
+			begPropListTemplate = "list_template_file";
 			// begPropIdMap = "create_id_map"; 
 	private static final String rbmFile = "beg_messages",
 			rbmBd = "bundleDirectory",
@@ -271,11 +272,46 @@ public class BundlesEnoGettext
 			Path poFile, Path targetFolder,
 			boolean separateFiles, String category )
 	{
+		int minForEachCategory = 50;
+		StringBuilder fileContent = new StringBuilder( messages.size() * minForEachCategory );
 		String lrbUpperHalf = templateForListResourceBundle();
-		String lrbLowerHalf = "{\"IMPROVE\",\"b.e.g. should handle better\"}\t\t};\n\t}\n}";
-		StringBuilder fileContent = new StringBuilder();
-		//for ( int ind )
-		
+		String lrbLowerHalf = "\t\t\t{\"IMPROVE\",\"b.e.g. should handle better\"}\n\t\t};\n\t}\n}\n\n";
+		String filePackage = config.getProperty( begPropPackage, "" );
+		filePackage = ( ! filePackage.isEmpty() )
+				? "package "+ filePackage +";\n" : filePackage;
+		if ( ! separateFiles )
+		{
+			lrbUpperHalf = String.format( lrbUpperHalf, filePackage,
+					classNameFor( category, poFile ) );
+			fileContent.append( lrbUpperHalf );
+			for ( String currCategory : messages.keySet() )
+			{
+				fileContent.append( "\n\t\t\t// " );
+				fileContent.append( currCategory );
+				fileContent.append( "\n" );
+				for ( String pair : messages.get( currCategory ) )
+				{
+					fileContent.append( "\t\t\t" );
+					fileContent.append( pair );
+					fileContent.append( System.lineSeparator() );
+				}
+			}
+			fileContent.append( lrbLowerHalf );
+			writeTo( filenamefor( poFile, targetFolder, category ),
+					fileContent.toString(), ! separateFiles );
+		}
+		else
+		{
+			throw new RuntimeException( cl+"eal multiple lists not yet implemented" );
+		}
+	}
+
+
+	private String classNameFor( String baseName, Path poFile )
+	{
+		String poWithExtension = poFile.getFileName().toString();
+		int indOfExtension = poWithExtension.indexOf( '.' );
+		return baseName +"_"+ poWithExtension.substring( 0, indOfExtension );
 	}
 
 
@@ -311,10 +347,12 @@ public class BundlesEnoGettext
 	}
 
 
+	/** has two Formatter escape marks for package, classname; caller closes three braces  */
 	private String templateForListResourceBundle()
 	{
 		String here = cl +"tflrb";
-		String templatePath = "template_lrb_class_upper.txt";
+		String templatePath = config.getProperty(
+				begPropListTemplate, "etc/template_lrb_class_upper.txt" );
 		Path templateOnClasspath = null;
 		try
 		{
@@ -322,13 +360,30 @@ public class BundlesEnoGettext
 		}
 		catch ( InvalidPathException ipe )
 		{
-			MessageFormat problem = new MessageFormat( rbm.getString( rbmBol ) );
+			MessageFormat problem = new MessageFormat( rbm.getString( rbmTdne ) );
 			System.err.println( problem.format(
 					new Object[]{ here, templatePath, ipe } ) );
 		}
 		String templateBody = null;
-		//templateBody = Files.
-		throw new RuntimeException( "not yet implemented" );
+		if ( templateOnClasspath != null )
+		{
+			try
+			{
+				templateBody = new String( Files.readAllBytes( templateOnClasspath ) );
+			}
+			catch ( IOException ie )
+			{
+				MessageFormat problem = new MessageFormat( rbm.getString( rbmTdne ) );
+				System.err.println( problem.format(
+						new Object[]{ here, templatePath, ie } ) );
+			}
+		}
+		if ( templateOnClasspath == null || templateBody == null )
+		{
+			templateBody = "%1$s\n\timport java.util.ListResourceBundle;\n\tpublic class %2$s extends"
+					+ " ListResourceBundle {\n\tprotected Object[][] getContents() {\n\treturn new Object[][] {\n";
+		}
+		return templateBody;
 	}
 
 

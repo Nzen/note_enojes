@@ -1,9 +1,9 @@
-
-%1$
+/* 1 is the package ; 2 is class name ; caller supplies body and closes the three braces */
+%1$s
 
 import java.util.ListResourceBundle;
 
-public class %2$ extends ListResourceBundle
+public class %2$s extends ListResourceBundle
 {
 	protected Object[][] getContents()
 	{
