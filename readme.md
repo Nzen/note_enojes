@@ -20,7 +20,7 @@ Eno is a document / data structure specification. Its authors provide gettext co
 				note_enojes
 			</artifactId>
 			<version>
-				0.7
+				1.0
 			</version>
 		</dependency>
 ```
@@ -47,6 +47,8 @@ output_into_package = true
 java_package = org.eno-lang.locale
 
 replace_variables = true
+
+list_template_file = src/main/resources/template_lrb_class_upper.txt
 ```
 
 * input_directory is a path to find the gettext po files prepared by eno-locale
@@ -56,6 +58,7 @@ replace_variables = true
 * output\_into\_package whether the resulting files should be in subfolders from output corresponding to \_package_
 * java_package is a java package one may want to copy the files to; if bundle style is list, the classes will use this package
 * replace_variables indicates to replace variables like [MAXIMUM] with an escape string for MessageFormat output, ex {1,number} .
+* list\_template\_file The location of a template file for starting ListResourceBundle classes
 
 
 

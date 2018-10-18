@@ -108,6 +108,10 @@ public class BundlesEnoGettext
 					msgKey = line.substring( messageKeyKey
 							.length() + wrapperLen, line.length() -1 );
 					msgKey = msgKey.replaceAll( "'", "''" );
+					if ( resourceIsProperties )
+					{
+						msgKey = msgKey.replaceAll( " ", "\\\\ " );
+					}
 				}
 				else if ( line.startsWith( messageValueKey ) )
 				{
@@ -120,7 +124,7 @@ public class BundlesEnoGettext
 					}
 					if ( resourceIsProperties )
 					{
-						messages.get( category ).add( msgKey +" = "+ msgValue );
+						messages.get( category ).add( msgKey +"="+ msgValue );
 					}
 					else
 					{
@@ -272,15 +276,38 @@ public class BundlesEnoGettext
 			Path poFile, Path targetFolder,
 			boolean separateFiles, String category )
 	{
+		boolean appendWhenWriting = true;
 		int minForEachCategory = 50;
-		StringBuilder fileContent = new StringBuilder( messages.size() * minForEachCategory );
+		StringBuilder fileContent;
 		String lrbUpperHalf = templateForListResourceBundle();
 		String lrbLowerHalf = "\t\t\t{\"IMPROVE\",\"b.e.g. should handle better\"}\n\t\t};\n\t}\n}\n\n";
 		String filePackage = config.getProperty( begPropPackage, "" );
 		filePackage = ( ! filePackage.isEmpty() )
 				? "package "+ filePackage +";\n" : filePackage;
-		if ( ! separateFiles )
+		if ( separateFiles )
 		{
+			for ( String currCategory : messages.keySet() )
+			{
+				fileContent = new StringBuilder( messages.size() * minForEachCategory );
+				fileContent.append( String.format( lrbUpperHalf, filePackage,
+						classNameFor( currCategory, poFile ) ) );
+				fileContent.append( "\n\t\t\t// " );
+				fileContent.append( currCategory );
+				fileContent.append( "\n" );
+				for ( String pair : messages.get( currCategory ) )
+				{
+					fileContent.append( "\t\t\t" );
+					fileContent.append( pair );
+					fileContent.append( System.lineSeparator() );
+				}
+				fileContent.append( lrbLowerHalf );
+				writeTo( filenamefor( poFile, targetFolder, currCategory ),
+						fileContent.toString(), ! appendWhenWriting );
+			}
+		}
+		else
+		{
+			fileContent = new StringBuilder( messages.size() * minForEachCategory );
 			lrbUpperHalf = String.format( lrbUpperHalf, filePackage,
 					classNameFor( category, poFile ) );
 			fileContent.append( lrbUpperHalf );
@@ -298,11 +325,7 @@ public class BundlesEnoGettext
 			}
 			fileContent.append( lrbLowerHalf );
 			writeTo( filenamefor( poFile, targetFolder, category ),
-					fileContent.toString(), ! separateFiles );
-		}
-		else
-		{
-			throw new RuntimeException( cl+"eal multiple lists not yet implemented" );
+					fileContent.toString(), ! appendWhenWriting );
 		}
 	}
 
@@ -395,8 +418,10 @@ public class BundlesEnoGettext
 				? StandardOpenOption.APPEND : StandardOpenOption.TRUNCATE_EXISTING;
 		try
 		{
+			List<String> justOne = new LinkedList<>();
+			justOne.add( entireContent );
 			Files.createDirectories( destination.getParent() );
-			Files.write( destination, entireContent.getBytes(),
+			Files.write( destination, justOne, Charset.forName( "UTF-8" ),
 					StandardOpenOption.CREATE, whetherAppend );
 			MessageFormat feedback = new MessageFormat( rbm.getString( rbmEs ) );
 			System.out.println( feedback.format( new Object[]{ here, destination } ) );
