@@ -34,8 +34,9 @@ public class BundlesEnoGettext
 			begPropPackageDir = "output_into_package",
 			begPropPackage = "java_package",
 			begPropReplaceVars = "replace_variables",
-			begPropListTemplate = "list_template_file";
-			// begPropIdMap = "create_id_map"; 
+			begPropListTemplate = "list_template_file",
+			begPropIdMap = "create_id_map",
+			begPropIdMapTemplate = "id_map_template_file"; 
 	private static final String rbmFile = "beg_messages",
 			rbmBd = "bundleDirectory",
 			rbmBol = "bundleOneLocale",
@@ -91,9 +92,11 @@ public class BundlesEnoGettext
 				begPropReplaceVars, "false" ).toLowerCase().equals( "true" );
 		boolean resourceIsProperties = config.getProperty( begPropStyle, "properties" )
 				.toLowerCase().equals( "properties" );
+		Map<String, String> keyAlias = new  TreeMap<>(); // NOTE so these are sorted
 		Map<String,List<String>> messages = new HashMap<>();
 		try
 		{
+			int idInd = 0;
 			for ( String line : Files.readAllLines( poFile, Charset.forName( "UTF-8" ) ) )
 			{
 				if ( line.startsWith( categoryKey ) )
@@ -101,6 +104,7 @@ public class BundlesEnoGettext
 					category = line.substring( line
 							.indexOf( "'" ) +1, line.length() -1 ); // NOTE between quotes
 					messages.put( category, new LinkedList<>() );
+					idInd = 0;
 				}
 				else if ( line.startsWith( messageKeyKey ) )
 				{
@@ -108,10 +112,12 @@ public class BundlesEnoGettext
 					msgKey = line.substring( messageKeyKey
 							.length() + wrapperLen, line.length() -1 );
 					msgKey = msgKey.replaceAll( "'", "''" );
+					keyAlias.put( category + idInd, msgKey ); // I can misspend space or time, I choose space
 					if ( resourceIsProperties )
 					{
 						msgKey = msgKey.replaceAll( " ", "\\\\ " );
 					}
+					idInd++;
 				}
 				else if ( line.startsWith( messageValueKey ) )
 				{
@@ -142,6 +148,10 @@ public class BundlesEnoGettext
 			System.err.println( problem.format( new Object[]{ here, poFile, ie } ) );
 		}
 		emitResourceBundles( messages, poFile, targetFolder, resourceIsProperties );
+		if ( config.getProperty( begPropIdMap, "false" ).equals( "true" ) )
+		{
+			emitKeyAlias( keyAlias, targetFolder );
+		}
 	}
 
 
@@ -330,6 +340,40 @@ public class BundlesEnoGettext
 	}
 
 
+	/** assumes similar values to ListResourceBundle */
+	private void emitKeyAlias( Map<String, String> keyAlias, Path targetFolder )
+	{
+		boolean appendWhenWriting = true;
+		int minForEachCategory = 50;
+		StringBuilder fileContent = new StringBuilder( keyAlias.size() * minForEachCategory );
+		String aliasTemplate = templateForKeyAlias();
+		String filePackage = config.getProperty( begPropPackage, "" );
+		filePackage = ( ! filePackage.isEmpty() )
+				? "package "+ filePackage +";\n" : filePackage;
+		int ind = 0;
+		for ( String alias : keyAlias.keySet() )
+		{
+			String enoId = keyAlias.get( alias );
+			fileContent.append( "\t\tpublic static final String " );
+			fileContent.append( alias );
+			fileContent.append( " = \"" );
+			fileContent.append( enoId );
+			fileContent.append( "\";\n" );
+			ind++;
+			if ( ind > 5 )
+			{
+				ind = 0;
+				fileContent.append( "\n" );
+			}
+		}
+		String className = "EnoAlias";
+		writeTo( targetFolder.resolve( className +".java" ),
+				String.format( aliasTemplate, filePackage,
+						className, fileContent.toString() ),
+				! appendWhenWriting );
+	}
+
+
 	private String classNameFor( String baseName, Path poFile )
 	{
 		String poWithExtension = poFile.getFileName().toString();
@@ -404,7 +448,46 @@ public class BundlesEnoGettext
 		if ( templateOnClasspath == null || templateBody == null )
 		{
 			templateBody = "%1$s\n\timport java.util.ListResourceBundle;\n\tpublic class %2$s extends"
-					+ " ListResourceBundle {\n\tprotected Object[][] getContents() {\n\treturn new Object[][] {\n";
+					+ " ListResourceBundle\n{\n\tprotected Object[][] getContents() {\n\treturn new Object[][] {\n";
+		}
+		return templateBody;
+	}
+
+
+	/** has two Formatter escape marks for package, classname; caller closes three braces  */
+	private String templateForKeyAlias()
+	{
+		String here = cl +"tflrb";
+		String templatePath = config.getProperty(
+				begPropIdMapTemplate, "etc/template_map_class.txt" );
+		Path templateOnClasspath = null;
+		try
+		{
+			templateOnClasspath = Paths.get( templatePath );
+		}
+		catch ( InvalidPathException ipe )
+		{
+			MessageFormat problem = new MessageFormat( rbm.getString( rbmTdne ) );
+			System.err.println( problem.format(
+					new Object[]{ here, templatePath, ipe } ) );
+		}
+		String templateBody = null;
+		if ( templateOnClasspath != null )
+		{
+			try
+			{
+				templateBody = new String( Files.readAllBytes( templateOnClasspath ) );
+			}
+			catch ( IOException ie )
+			{
+				MessageFormat problem = new MessageFormat( rbm.getString( rbmTdne ) );
+				System.err.println( problem.format(
+						new Object[]{ here, templatePath, ie } ) );
+			}
+		}
+		if ( templateOnClasspath == null || templateBody == null )
+		{
+			templateBody = "%1$s\n\tpublic class %2$s\n{\n%3$s\n}";
 		}
 		return templateBody;
 	}

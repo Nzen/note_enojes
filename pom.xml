@@ -15,6 +15,9 @@
 	<version>
 		1.0
 	</version>
+	<packaging>
+		jar
+	</packaging>
 	<inceptionYear>
 		2018
 	</inceptionYear>
@@ -188,4 +191,12 @@
 	<name>
 		note_enojes
 	</name>
+	<url>
+		https://github.com/Nzen/note_enojes
+	</url>
+	<scm>
+		<url>
+			https://github.com/Nzen/note_enojes.git
+		</url>
+	</scm>
 </project>
