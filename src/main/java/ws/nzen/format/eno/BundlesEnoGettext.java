@@ -36,7 +36,7 @@ public class BundlesEnoGettext
 			begPropReplaceVars = "replace_variables",
 			begPropListTemplate = "list_template_file",
 			begPropIdMap = "create_id_map",
-			begPropIdMapTemplate = "id_map_template_file"; 
+			begPropIdMapTemplate = "id_map_template_file";
 	private static final String rbmFile = "beg_messages",
 			rbmBd = "bundleDirectory",
 			rbmBol = "bundleOneLocale",
@@ -105,13 +105,12 @@ public class BundlesEnoGettext
 							.indexOf( "'" ) +1, line.length() -1 ); // NOTE between quotes
 					messages.put( category, new LinkedList<>() );
 					idInd = 0;
-				}
+				}	
 				else if ( line.startsWith( messageKeyKey ) )
 				{
 					// substring to just that part
 					msgKey = line.substring( messageKeyKey
 							.length() + wrapperLen, line.length() -1 );
-					msgKey = msgKey.replaceAll( "'", "''" );
 					keyAlias.put( category + idInd, msgKey ); // I can misspend space or time, I choose space
 					if ( resourceIsProperties )
 					{
