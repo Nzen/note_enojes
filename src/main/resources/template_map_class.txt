@@ -1,0 +1,7 @@
+/* 1 is the package ; 2 is class name ; 3 is the class body */
+%1$s
+
+public class %2$s
+{
+%3$s
+}
