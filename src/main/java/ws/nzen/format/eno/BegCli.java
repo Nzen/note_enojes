@@ -153,25 +153,31 @@ public class BegCli
 	public void satisfySession()
 	{
 		BundlesEnoGettext beg = new BundlesEnoGettext( sessionConfig );
-		Path localeFolder;
-		String localePath = "";
+		String defaultMessageFileName = "messages.json";
+		Path localePath;
+		String userPath = "";
 		try
 		{
 			final String currentDir = ( File.pathSeparator.equals( ":" ) )
 					? "." : ""; // NOTE windows / linux current dir
-			 localePath = sessionConfig.getProperty(
-					BundlesEnoGettext.begPropInDir, currentDir );
-			localeFolder = Paths.get( localePath );
+			String defaultPath = currentDir + File.separator + defaultMessageFileName;
+			userPath = sessionConfig.getProperty(
+					BundlesEnoGettext.begPropInDir, defaultPath );
+			localePath = Paths.get( userPath );
+			if ( localePath.toFile().isDirectory() )
+			{
+				localePath = localePath.resolve( defaultMessageFileName );
+			}
 		}
 		catch ( InvalidPathException ipe )
 		{
 			MessageFormat problem = new MessageFormat( rbm.getString( rbKeyInpDir ) );
-			System.err.println( problem.format( new Object[]{ cl +"ss", localePath, ipe } )  );
-			localeFolder = null;
+			System.err.println( problem.format( new Object[]{ cl +"ss", userPath, ipe } )  );
+			localePath = null;
 		}
-		if ( localeFolder != null )
+		if ( localePath != null )
 		{
-			beg.bundleDirectory( localeFolder );
+			beg.bundleMessages( localePath );
 		}
 		// else, we're done, above already complained
 	}

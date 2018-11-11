@@ -1,9 +1,14 @@
-/* 1 is the package ; 2 is class name ; caller supplies body and closes the three braces */
+/* (for template) 1 is the package ; 2 is version comment ; 3 is class name
+	caller supplies body and closes the three braces */
+
 %1$s
+/*
+%2$s
+*/
 
 import java.util.ListResourceBundle;
 
-public class %2$s extends ListResourceBundle
+public class %3$s extends ListResourceBundle
 {
 	protected Object[][] getContents()
 	{

@@ -13,6 +13,8 @@ import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.text.MessageFormat;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -23,11 +25,15 @@ import java.util.ResourceBundle;
 import java.util.TreeMap;
 import java.util.stream.Stream;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+
 /** Convert lang.po files from eno-locale to ListResourceBundle java files */
 public class BundlesEnoGettext
 {
 	private static final String cl = "beg.";
-	public static final String begPropInDir = "input_directory",
+	private static final String ownVersion = "3.0";
+	public static final String begPropInDir = "input_path",
 			begPropOutDir = "output_directory",
 			begPropSeparate = "separate_by_category",
 			begPropStyle = "resource_bundle_style",
@@ -45,8 +51,10 @@ public class BundlesEnoGettext
 			rbmEs = "emitSuccess",
 			rbmEf = "emitFailure",
 			rbmTdne = "templateDoesNotExist";
-	private static final String categoryKey = "# Message group ",
-			messageKeyKey = "msgid", messageValueKey = "msgstr";
+	private static final String mjKeyMetaIndex = "meta",
+			mjKeyMetaWhen = "timestamp",
+			mjKeyMetaVersion = "version",
+			mjKeyMsgIndex = "messages";
 	private ResourceBundle rbm;
 	private Properties config;
 
@@ -64,109 +72,109 @@ public class BundlesEnoGettext
 	}
 
 
-	public void bundleDirectory( Path dir )
+	public void bundleMessages( Path jsonPath )
 	{
 		final String here = cl +"bd";
-		final Path destinationFolder = sessionDestinationFolder( dir );
-		final PathMatcher onlyPo = dir.getFileSystem().getPathMatcher( "glob:**/*.po" );
-		try
-		( final Stream<Path> fileChannel = Files.list( dir ) )
+		if ( ! jsonPath.getFileName().toString()
+				.toLowerCase().endsWith( "json" ) )
 		{
-			fileChannel.filter( onlyPo::matches ).forEach(
-					( poFile ) -> bundleOneLocale( poFile, destinationFolder ) );
+			throw new RuntimeException( here +"expecting a json file, not "
+					+ jsonPath.getFileName().toString() );
+		}
+		String entireFile = "";
+		try
+		{
+			entireFile = new String( Files.readAllBytes( jsonPath ) );
 		}
 		catch ( IOException ie )
 		{
 			MessageFormat problem = new MessageFormat( rbm.getString( rbmBd ) );
-			System.err.println( problem.format( new Object[]{ here, dir, ie } ) );
+			System.err.println( problem.format( new Object[]{ here, jsonPath, ie } ) );
+		}
+		// NOTE not recovering from OutOfMemoryError, 2GB is too many messages
+		final Path destinationFolder = sessionDestinationFolder( jsonPath.getParent() );
+		JSONObject entireCatalog = JSON.parseObject( entireFile );
+		String version = versionComment( entireCatalog );
+		JSONObject messageCatalog = entireCatalog.getJSONObject( mjKeyMsgIndex );
+		for ( String language : messageCatalog.keySet() )
+		{
+			JSONObject currLang = messageCatalog.getJSONObject( language );
+			bundleOneLocale( currLang, destinationFolder,
+					language, version );
 		}
 	}
 
 
-	public void bundleOneLocale( Path poFile, Path targetFolder )
+	/** returns paths of created files */
+	public void bundleOneLocale( JSONObject langMessages, Path targetFolder,
+			String langAbbreviation, String version )
 	{
-		final String here = cl +"bol";
-		final int wrapperLen = " \"".length();
-		String category = "", msgKey= "", msgValue= "";
+		String msgKey= "", msgValue= "";
 		boolean shouldReplaceVariables = config.getProperty(
 				begPropReplaceVars, "false" ).toLowerCase().equals( "true" );
 		boolean resourceIsProperties = config.getProperty( begPropStyle, "properties" )
 				.toLowerCase().equals( "properties" );
 		Map<String, String> keyAlias = new  TreeMap<>(); // NOTE so these are sorted
 		Map<String,List<String>> messages = new HashMap<>();
-		try
+		int idInd = 0;
+		for ( String category : langMessages.keySet() )
 		{
-			int idInd = 0;
-			for ( String line : Files.readAllLines( poFile, Charset.forName( "UTF-8" ) ) )
+			JSONObject currCategory = langMessages.getJSONObject( category );
+			List<String> categoryMessages = new ArrayList<>();
+			idInd = 0;
+			for ( String msgId : currCategory.keySet() )
 			{
-				if ( line.startsWith( categoryKey ) )
+				msgValue = currCategory.getString( msgId );
+				keyAlias.put( category + idInd, msgId );
+				if ( resourceIsProperties )
 				{
-					category = line.substring( line
-							.indexOf( "'" ) +1, line.length() -1 ); // NOTE between quotes
-					messages.put( category, new LinkedList<>() );
-					idInd = 0;
-				}	
-				else if ( line.startsWith( messageKeyKey ) )
-				{
-					// substring to just that part
-					msgKey = line.substring( messageKeyKey
-							.length() + wrapperLen, line.length() -1 );
-					keyAlias.put( category + idInd, msgKey ); // I can misspend space or time, I choose space
-					if ( resourceIsProperties )
-					{
-						msgKey = msgKey.replaceAll( " ", "\\\\ " );
-					}
-					idInd++;
+					msgKey = msgId.replaceAll( " ", "\\\\ " ); // NOTE escape spaces
 				}
-				else if ( line.startsWith( messageValueKey ) )
+				else
 				{
-					msgValue = line.substring( messageValueKey
-							.length() + wrapperLen, line.length() -1 );
-					msgValue = msgValue.replaceAll( "'", "''" );
-					if ( shouldReplaceVariables )
-					{
-						msgValue = replaceVarsForMessageFormat( msgValue );
-					}
-					if ( resourceIsProperties )
-					{
-						messages.get( category ).add( msgKey +"="+ msgValue );
-					}
-					else
-					{
-						// { "key", "value" },
-						messages.get( category ).add(
-								"{\""+ msgKey +"\", \""+ msgValue +"\"}," );
-					}
+					msgKey = msgId;
 				}
-				// else, skip, it's an unrelated comment or blank
+				msgValue = msgValue.replaceAll( "'", "''" ); // NOTE single quote x2 
+				if ( shouldReplaceVariables )
+				{
+					msgValue = replaceVarsForMessageFormat( msgValue );
+				}
+				if ( resourceIsProperties )
+				{
+					categoryMessages.add( msgKey +" = "+ msgValue );
+				}
+				else
+				{
+					// { "key", "value" },
+					categoryMessages.add(
+							"{\""+ msgKey +"\", \""+ msgValue +"\"}," );
+				}
+				idInd++;
 			}
+			messages.put( category, categoryMessages );
 		}
-		catch ( IOException ie )
-		{
-			MessageFormat problem = new MessageFormat( rbm.getString( rbmBol ) );
-			System.err.println( problem.format( new Object[]{ here, poFile, ie } ) );
-		}
-		emitResourceBundles( messages, poFile, targetFolder, resourceIsProperties );
+		emitResourceBundles( messages, langAbbreviation,
+				targetFolder, resourceIsProperties, version );
 		if ( config.getProperty( begPropIdMap, "false" ).equals( "true" ) )
 		{
-			emitKeyAlias( keyAlias, targetFolder );
+			emitKeyAlias( keyAlias, targetFolder, version );
 		}
 	}
 
 
 	/** replaces known variables (ex [LINE]) with escape flags ready
-	 * for use with MessageFormat. */
+	 * for use with MessageFormat (ex {0} or {2,number} ) */
 	private String replaceVarsForMessageFormat( String msgValue )
 	{
-		if ( msgValue == null || msgValue.isEmpty() || ! msgValue.contains( "[" ) )
+		if ( msgValue == null || msgValue.isEmpty() || ! msgValue.startsWith( "(" ) )
 		{
 			return msgValue;
 		}
-		final int likelyIncrease = 20;
-		StringBuilder changedValue = new StringBuilder(
-				msgValue.length() + likelyIncrease );
+		StringBuilder changedValue = new StringBuilder( msgValue.length() );
 		int indOfReplace = 0, prevInd = 0, variableInd = 0;
 		NavigableMap<Integer, EnoLocaleVariables> indType = new TreeMap<>();
+		final String endOfLambda = "=> ";
+		prevInd = msgValue.indexOf( endOfLambda ) + endOfLambda.length(); // NOTE skipping lambda "(args) =>"
 		while ( true )
 		{
 			indType.clear();
@@ -203,22 +211,9 @@ public class BundlesEnoGettext
 	}
 
 
-	private Path filenamefor( Path original, Path targetFolder, String category )
-	{
-		StringBuilder filename = new StringBuilder( category );
-		filename.append( "_" );
-		String language = original.getFileName().toString();
-		filename.append( language.substring( 0, language.lastIndexOf( '.' ) ) );
-		String extension = config.getProperty( begPropStyle, "properties" )
-				.toLowerCase().equals( "list" ) ? ".java" : ".properties";
-		filename.append( extension );
-		Path result = targetFolder.resolve( filename.toString() );
-		return result;
-	}
-
-
 	private void emitResourceBundles( Map<String,List<String>> messages,
-			Path poFile, Path targetFolder, boolean asProperties )
+			String langAbbreviation, Path targetFolder,
+			boolean asProperties, String version )
 	{
 		final String here = cl +"erb";
 		String category = "Messages";
@@ -227,8 +222,8 @@ public class BundlesEnoGettext
 				.toLowerCase().equals( "true" );
 		if ( ! separateFilePerCategory )
 		{
-			Path previousCommonFile = filenamefor(
-					poFile, targetFolder, category );
+			Path previousCommonFile = filenamefor( targetFolder,
+					category, langAbbreviation, asProperties );
 			try
 			{
 				Files.deleteIfExists( previousCommonFile );
@@ -242,48 +237,79 @@ public class BundlesEnoGettext
 		}
 		if ( asProperties )
 		{
-			emitAsProperties( messages, poFile, targetFolder,
-					separateFilePerCategory, category );
+			emitAsProperties( messages, targetFolder,
+					separateFilePerCategory, category,
+					langAbbreviation, asProperties, version );
 		}
 		else
 		{
-			emitAsList( messages, poFile, targetFolder,
-					separateFilePerCategory, category );
+			emitAsList( messages, targetFolder,
+					separateFilePerCategory, category,
+					langAbbreviation, asProperties, version );
 		}
 	}
 
 
 	private void emitAsProperties( Map<String,List<String>> messages,
-			Path poFile, Path targetFolder,
-			boolean separateFiles, String category )
+			Path targetFolder, boolean separateFiles, String category,
+			String language, boolean asProperties, String version )
 	{
 		StringBuilder fileContent = new StringBuilder();
-		for ( String currCategory : messages.keySet() )
+		if ( separateFiles )
+		{
+			for ( String currCategory : messages.keySet() )
+			{
+				fileContent.append( System.lineSeparator() );
+				fileContent.append( "# " );
+				fileContent.append( version.replace( System.lineSeparator(),
+						System.lineSeparator() +"# " ) ); // NOTE ensure multi line version has comment prefix
+				fileContent.append( System.lineSeparator() );
+				fileContent.append( System.lineSeparator() );
+				fileContent.append( "# " );
+				fileContent.append( currCategory );
+				fileContent.append( System.lineSeparator() );
+				List<String> pairs = messages.get( currCategory );
+				for ( String onePair : pairs )
+				{
+					fileContent.append( onePair );
+					fileContent.append( System.lineSeparator() );
+				}
+				writeTo( filenamefor( targetFolder, currCategory,
+							language, asProperties ),
+						fileContent.toString() );
+				fileContent.delete( 0, fileContent.length() -1 );
+			}
+		}
+		else
 		{
 			fileContent.append( System.lineSeparator() );
 			fileContent.append( "# " );
-			fileContent.append( currCategory );
+			fileContent.append( version.replace( System.lineSeparator(),
+					System.lineSeparator() +"# " ) ); // NOTE ensure multi line version has comment prefix
 			fileContent.append( System.lineSeparator() );
-			List<String> pairs = messages.get( currCategory );
-			for ( String onePair : pairs )
+			for ( String currCategory : messages.keySet() )
 			{
-				fileContent.append( onePair );
 				fileContent.append( System.lineSeparator() );
+				fileContent.append( "# " );
+				fileContent.append( currCategory );
+				fileContent.append( System.lineSeparator() );
+				List<String> pairs = messages.get( currCategory );
+				for ( String onePair : pairs )
+				{
+					fileContent.append( onePair );
+					fileContent.append( System.lineSeparator() );
+				}
 			}
-			if ( separateFiles )
-			{
-				category = currCategory;
-			}
-			writeTo( filenamefor( poFile, targetFolder, category ),
-					fileContent.toString(), ! separateFiles );
-			fileContent.delete( 0, fileContent.length() );
+			writeTo( filenamefor( targetFolder, category,
+						language, asProperties ),
+					fileContent.toString() );
 		}
 	}
 
 
 	private void emitAsList( Map<String,List<String>> messages,
-			Path poFile, Path targetFolder,
-			boolean separateFiles, String category )
+			Path targetFolder, boolean separateFiles, String category,
+			String language, boolean asProperties, String version )
 	{
 		boolean appendWhenWriting = true;
 		int minForEachCategory = 50;
@@ -298,8 +324,8 @@ public class BundlesEnoGettext
 			for ( String currCategory : messages.keySet() )
 			{
 				fileContent = new StringBuilder( messages.size() * minForEachCategory );
-				fileContent.append( String.format( lrbUpperHalf, filePackage,
-						classNameFor( currCategory, poFile ) ) );
+				fileContent.append( String.format( lrbUpperHalf, filePackage, version,
+						classNameFor( currCategory, language ) ) );
 				fileContent.append( "\n\t\t\t// " );
 				fileContent.append( currCategory );
 				fileContent.append( "\n" );
@@ -310,15 +336,16 @@ public class BundlesEnoGettext
 					fileContent.append( System.lineSeparator() );
 				}
 				fileContent.append( lrbLowerHalf );
-				writeTo( filenamefor( poFile, targetFolder, currCategory ),
-						fileContent.toString(), ! appendWhenWriting );
+				writeTo( filenamefor( targetFolder, currCategory,
+							language, asProperties ),
+						fileContent.toString() );
 			}
 		}
 		else
 		{
 			fileContent = new StringBuilder( messages.size() * minForEachCategory );
-			lrbUpperHalf = String.format( lrbUpperHalf, filePackage,
-					classNameFor( category, poFile ) );
+			lrbUpperHalf = String.format( lrbUpperHalf, filePackage, version,
+					classNameFor( category, language ) );
 			fileContent.append( lrbUpperHalf );
 			for ( String currCategory : messages.keySet() )
 			{
@@ -333,51 +360,73 @@ public class BundlesEnoGettext
 				}
 			}
 			fileContent.append( lrbLowerHalf );
-			writeTo( filenamefor( poFile, targetFolder, category ),
-					fileContent.toString(), ! appendWhenWriting );
+			writeTo( filenamefor( targetFolder, category,
+						language, asProperties ),
+					fileContent.toString() );
 		}
 	}
 
 
 	/** assumes similar values to ListResourceBundle */
-	private void emitKeyAlias( Map<String, String> keyAlias, Path targetFolder )
+	private void emitKeyAlias( Map<String, String> keyAlias, Path targetFolder,
+			String version )
 	{
-		boolean appendWhenWriting = true;
 		int minForEachCategory = 50;
 		StringBuilder fileContent = new StringBuilder( keyAlias.size() * minForEachCategory );
 		String aliasTemplate = templateForKeyAlias();
 		String filePackage = config.getProperty( begPropPackage, "" );
 		filePackage = ( ! filePackage.isEmpty() )
 				? "package "+ filePackage +";\n" : filePackage;
-		int ind = 0;
+		int ind = 0, enoughForDistinct = 3;
+		String category = "";
 		for ( String alias : keyAlias.keySet() )
 		{
+			if ( !  alias.substring( 0, enoughForDistinct ).equals( category ) )
+			{
+				category = alias.substring( 0, enoughForDistinct ); 
+				fileContent.append( System.lineSeparator() );
+				fileContent.append( "\t// " );
+				fileContent.append( alias.substring( 0, alias.length() -1 ) ); // NOTE removing the index 
+				fileContent.append( System.lineSeparator() );
+				ind = 0;
+			}
 			String enoId = keyAlias.get( alias );
-			fileContent.append( "\t\tpublic static final String " );
-			fileContent.append( alias );
+			fileContent.append( "\tpublic static final String " );
+			fileContent.append( enoId.replace( ' ', '_' ).toUpperCase() );
 			fileContent.append( " = \"" );
 			fileContent.append( enoId );
-			fileContent.append( "\";\n" );
+			fileContent.append( "\";" ); 
+			fileContent.append( System.lineSeparator() );
 			ind++;
 			if ( ind > 5 )
 			{
-				ind = 0;
-				fileContent.append( "\n" );
+				ind = 0; 
+				fileContent.append( System.lineSeparator() );
 			}
 		}
 		String className = "EnoAlias";
 		writeTo( targetFolder.resolve( className +".java" ),
-				String.format( aliasTemplate, filePackage,
-						className, fileContent.toString() ),
-				! appendWhenWriting );
+				String.format( aliasTemplate, filePackage, version,
+						className, fileContent.toString() ) );
 	}
 
 
-	private String classNameFor( String baseName, Path poFile )
+	private Path filenamefor( Path targetFolder, String category,
+			String language, boolean asProperties )
 	{
-		String poWithExtension = poFile.getFileName().toString();
-		int indOfExtension = poWithExtension.indexOf( '.' );
-		return baseName +"_"+ poWithExtension.substring( 0, indOfExtension );
+		StringBuilder filename = new StringBuilder( category );
+		filename.append( "_" );
+		filename.append( language );
+		String extension = asProperties ? ".properties" : ".java";
+		filename.append( extension );
+		Path result = targetFolder.resolve( filename.toString() );
+		return result;
+	}
+
+
+	private String classNameFor( String baseName, String language )
+	{
+		return baseName +"_"+ language;
 	}
 
 
@@ -410,6 +459,31 @@ public class BundlesEnoGettext
 					here, folderAttempted, ipe } ) );
 			return fallback;
 		}
+	}
+
+
+	/** current time; if catalog has time and version, this adds those too */
+	private String versionComment( JSONObject messageCatalog )
+	{
+		StringBuilder comment = new StringBuilder();
+		comment.append( "\tGenerated v" );
+		comment.append( ownVersion );
+		comment.append( " at " );
+		comment.append( LocalDateTime.now().toString() );
+		if ( messageCatalog != null && messageCatalog.containsKey( mjKeyMetaIndex ) )
+		{
+			JSONObject metaInfo = messageCatalog.getJSONObject( mjKeyMetaIndex );
+			if ( metaInfo.containsKey( mjKeyMetaVersion )
+					&& metaInfo.containsKey( mjKeyMetaWhen ) )
+			{
+				comment.append( System.lineSeparator() );
+				comment.append( "\tUsing eno-locale messages.json v" );
+				comment.append( metaInfo.getString( mjKeyMetaVersion ) );
+				comment.append( " buillt " );
+				comment.append( metaInfo.getString( mjKeyMetaWhen ) );
+			}
+		}
+		return comment.toString();
 	}
 
 
@@ -492,12 +566,10 @@ public class BundlesEnoGettext
 	}
 
 
-	private void writeTo( Path destination,
-			String entireContent, boolean append )
+	private void writeTo( Path destination, String entireContent )
 	{
 		final String here = cl +"wt";
-		OpenOption whetherAppend = ( append )
-				? StandardOpenOption.APPEND : StandardOpenOption.TRUNCATE_EXISTING;
+		OpenOption whetherAppend = StandardOpenOption.TRUNCATE_EXISTING;
 		try
 		{
 			List<String> justOne = new LinkedList<>();

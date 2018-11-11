@@ -4,6 +4,7 @@ Note Enojes
 Copyright Nicholas Prado, released under terms of MIT license, as described at https://mitlicense.org
 
 Note Enojes relies on  
-* Apache Commons-Cli, which is copyright released under Apache license terms.
+* Apache Commons-Cli, which is copyright Apache Software Foundation, released under Apache license v2.0 terms.
+* Alibaba fastjson, which is copyright Alibaba Group, released under Apache license v2.0 terms.
 
-Note Enojes relies on gettext translation files from eno-locales (https://github.com/eno-lang/eno-locales). Eno-locales is published source, but not open source, at the time of this writing.
+Note Enojes relies on the message catalog file (messages.json) from eno-locales (https://github.com/eno-lang/eno-locales). Eno-locales is published source, but not open source, at the time of this writing.
