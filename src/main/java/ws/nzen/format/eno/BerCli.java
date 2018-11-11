@@ -20,7 +20,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
 /**  */
-public class BegCli
+public class BerCli
 {
 	private static final String cl = "bc.";
 	static final String configFlagS = "c", configFlagLong = "config", // S is for short
@@ -41,7 +41,7 @@ public class BegCli
 	{
 		ResourceBundle rbm = ResourceBundle.getBundle( rbmFile );
 		CommandLine userInput = prepCli( prepCliParser(), args, rbm );
-		BegCli doesStuff = prepDoer( userInput );
+		BerCli doesStuff = prepDoer( userInput );
 		doesStuff.setSessionConfig( prepConfig( userInput, rbm ) );
 		doesStuff.satisfySession();
 	}
@@ -86,17 +86,17 @@ public class BegCli
 	}
 
 
-	public static BegCli prepDoer( CommandLine userInput )
+	public static BerCli prepDoer( CommandLine userInput )
 	{
-		BegCli doesStuff;
+		BerCli doesStuff;
 		if ( userInput != null && ( userInput.hasOption( verboseFlagS )
 				|| userInput.hasOption( verboseFlagLong ) ) )
 		 {
-			doesStuff = new BegCli( true );
+			doesStuff = new BerCli( true );
 		 }
 		else
 		{
-			 doesStuff = new BegCli();
+			 doesStuff = new BerCli();
 		}
 		return doesStuff;
 	}
@@ -138,13 +138,13 @@ public class BegCli
 	}
 
 
-	public BegCli()
+	public BerCli()
 	{
 		this( false );
 	}
 
 
-	public BegCli( boolean noiseTolerance )
+	public BerCli( boolean noiseTolerance )
 	{
 		verbose = noiseTolerance;
 	}
@@ -152,7 +152,7 @@ public class BegCli
 
 	public void satisfySession()
 	{
-		BundlesEnoGettext beg = new BundlesEnoGettext( sessionConfig );
+		BundlesEnoResources beg = new BundlesEnoResources( sessionConfig );
 		String defaultMessageFileName = "messages.json";
 		Path localePath;
 		String userPath = "";
@@ -162,7 +162,7 @@ public class BegCli
 					? "." : ""; // NOTE windows / linux current dir
 			String defaultPath = currentDir + File.separator + defaultMessageFileName;
 			userPath = sessionConfig.getProperty(
-					BundlesEnoGettext.begPropInDir, defaultPath );
+					BundlesEnoResources.begPropInDir, defaultPath );
 			localePath = Paths.get( userPath );
 			if ( localePath.toFile().isDirectory() )
 			{

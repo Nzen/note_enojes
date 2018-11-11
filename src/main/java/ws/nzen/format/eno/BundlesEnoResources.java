@@ -28,10 +28,11 @@ import java.util.stream.Stream;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 
-/** Convert lang.po files from eno-locale to ListResourceBundle java files */
-public class BundlesEnoGettext
+/** Convert lang.po files from eno-locale to ListResourceBundle
+ * or properties files */
+public class BundlesEnoResources
 {
-	private static final String cl = "beg.";
+	private static final String cl = "ber.";
 	private static final String ownVersion = "3.0";
 	public static final String begPropInDir = "input_path",
 			begPropOutDir = "output_directory",
@@ -43,7 +44,7 @@ public class BundlesEnoGettext
 			begPropListTemplate = "list_template_file",
 			begPropIdMap = "create_id_map",
 			begPropIdMapTemplate = "id_map_template_file";
-	private static final String rbmFile = "beg_messages",
+	private static final String rbmFile = "ber_messages",
 			rbmBd = "bundleDirectory",
 			rbmBol = "bundleOneLocale",
 			rbmDf = "destinationDirectory",
@@ -59,13 +60,13 @@ public class BundlesEnoGettext
 	private Properties config;
 
 
-	public BundlesEnoGettext()
+	public BundlesEnoResources()
 	{
 		this( new Properties() );
 	}
 
 
-	public BundlesEnoGettext( Properties sessionConfig )
+	public BundlesEnoResources( Properties sessionConfig )
 	{
 		setConfig( sessionConfig );
 		rbm = ResourceBundle.getBundle( rbmFile );
