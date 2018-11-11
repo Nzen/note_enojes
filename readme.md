@@ -28,7 +28,7 @@ Eno is a document / data structure specification. Its authors provide a json mes
 #### Gradle dependence declaration
 
 ```
-	'ws.nzen.format:note_enojes:1.1'
+	'ws.nzen.format:note_enojes:2.0'
 ```
 
 This will require Apache's commons cli and Alibaba's fastjson library. It's worth noting that Note Enojes hasn't been uploaded to maven central.
@@ -72,7 +72,7 @@ Note Enojes uses compatibility versioning.
 
 * 1.0 - Produces list and property resource bundle files.
 * 1.1 - Produces an optional alias file.
-* 2.0 - Uses messages.json rather than separate gettext files. Removes, now redundant, alias file.
+* 2.0 - Uses messages.json rather than separate gettext files.
 
 
 
