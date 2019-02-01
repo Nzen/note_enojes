@@ -5,154 +5,324 @@
 		xsi:schemaLocation="http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>
 		4.0.0
-	</modelVersion>
+		</modelVersion>
+	<!-- version used
+	<mavenVersion>
+		3.0.5
+		</mavenVersion>
+		-->
 	<groupId>
-		ws.nzen.format
-	</groupId>
+		ws.nzen.format.eno
+		</groupId>
 	<artifactId>
 		note_enojes
-	</artifactId>
+		</artifactId>
 	<version>
-		2.0
-	</version>
+		2.0-SNAPSHOT
+		</version>
+	<description>
+		ResourceBundle properties and list classes from eno-locale json message catalog.
+		</description>
+	<name>
+		note_enojes
+		</name>
+	<url>
+		https://github.com/Nzen/note_enojes
+		</url>
 	<packaging>
 		jar
-	</packaging>
+		</packaging>
 	<inceptionYear>
 		2018
-	</inceptionYear>
+		</inceptionYear>
 	<licenses>
 		<license>
 			<name>
-				MIT v1.0
-			</name>
+				MIT License v1.0
+				</name>
 			<url>
 				https://mitlicense.org
-			</url>
-		</license>
-	</licenses>
+				</url>
+			</license>
+		</licenses>
 	<developers>
 		<developer>
 			<id>
 				nzen
-			</id>
+				</id>
 			<name>
 				Nicholas Prado
-			</name>
+				</name>
 			<email>
 				nmprado@nzen.ws
-			</email>
+				</email>
 			<roles>
 				<role>
 					Implementor
-				</role>
-			</roles>
+					</role>
+				</roles>
 			<timezone>
 				UTC-06:00
-			</timezone>
-		</developer>
-	</developers>
+				</timezone>
+			</developer>
+		</developers>
+	<properties>
+		<project.build.sourceEncoding>
+			UTF-8
+			</project.build.sourceEncoding>
+		</properties>
 	<dependencies>
 		<dependency>
 			<groupId>
 				commons-cli
-			</groupId>
+				</groupId>
 			<artifactId>
 				commons-cli
-			</artifactId>
+				</artifactId>
 			<version>
 				1.4
-			</version>
-		</dependency>
+				</version>
+			</dependency>
 		<dependency>
 			<groupId>
 				com.alibaba
-			</groupId>
+				</groupId>
 			<artifactId>
 				fastjson
-			</artifactId>
+				</artifactId>
 			<version>
 				1.2.51
-			</version>
-		</dependency>
+				</version>
+			</dependency>
 		<dependency>
 			<groupId>
-				org.junit
-			</groupId>
+				org.junit.jupiter
+				</groupId>
 			<artifactId>
-				junit-bom
-				<!-- this time, I'll just ask for everything -->
-			</artifactId>
+				junit-jupiter-engine
+				</artifactId>
 			<version>
-				5.3.1
-			</version>
+				5.3.2
+				</version>
 			<scope>
 				test
-			</scope>
-			<type>
-				pom
-			</type>
-		</dependency>
-	</dependencies>
+				</scope>
+			</dependency>
+		<dependency>
+			<groupId>
+				org.junit.jupiter
+				</groupId>
+			<artifactId>
+				junit-jupiter-api
+				</artifactId>
+			<version>
+				5.3.2
+				</version>
+			<scope>
+				test
+				</scope>
+			</dependency>
+		</dependencies>
 	<build>
-		<pluginManagement>
+		<!-- <pluginManagement> I can't tell if this helps or hurts -->
 		    <plugins>
-			    <!-- use java 10 jdk, if not default -->
+				<!-- use java 10 jdk, if not default -->
 				<plugin>
 					<groupId>
 						org.apache.maven.plugins
-					</groupId>
+						</groupId>
 					<artifactId>
 						maven-toolchains-plugin
-					</artifactId>
+						</artifactId>
 					<version>
 						1.1
-					</version>
+						</version>
 					<configuration>
 						<toolchains>
 							<jdk>
 								<version>
-									[9,)
-								</version>
-							</jdk>
-						</toolchains>
-					</configuration>
+									[1.8,)
+									</version>
+								</jdk>
+							</toolchains>
+						</configuration>
 					<executions>
 						<execution>
 							<goals>
 								<goal>
 									toolchain
-								</goal>
-							</goals>
-						</execution>
-					</executions>
-				</plugin>
-		    	<!-- make source jar -->
-			    <plugin>
+									</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				<plugin>
+					<!-- compile with java v9+ -->
 					<groupId>
 						org.apache.maven.plugins
-					</groupId>
+						</groupId>
+					<artifactId>
+						maven-compiler-plugin
+						</artifactId>
+					<version>
+						3.8.0
+						</version>
+					<configuration>
+						<!-- For java 9+
+						<source>
+							1.11
+							</source>
+						<target>
+							1.11
+							</target>
+						<release>
+							11
+							</release>
+							-->
+						<!-- For java 8 holdouts -->
+							<source>
+								1.8
+								</source>
+							<target>
+								1.8
+								</target>
+						<encoding>
+							UTF-8
+							</encoding>
+						</configuration>
+					<!-- For java 8 holdouts ; remove for java 9+ -->
+					<executions>
+						<execution>
+							<id>
+								default-compile
+								</id>
+							<phase>
+								compile
+								</phase>
+							<configuration>
+								<excludes>
+									<exclude>
+										**/module-info.java
+										</exclude>
+									</excludes>
+								</configuration> 
+							<goals>
+								<goal>
+									compile
+									</goal>
+								</goals>
+							</execution>                  
+						</executions>
+					</plugin>
+			    <plugin>
+		    	<!-- make source jar -->
+					<groupId>
+						org.apache.maven.plugins
+						</groupId>
 					<artifactId>
 						maven-source-plugin
-					</artifactId>
+						</artifactId>
 					<version>
 						3.0.1
-					</version>
+						</version>
 					<executions>
 						<execution>
 							<id>
 								attach-sources
-							</id>
+								</id>
 							<goals>
 							<goal>
-								jar
-							</goal>
-							</goals>
-						</execution>
-					</executions>
-				</plugin>
-		    	<!-- skip tests without remembering -DskipTests -->
+								jar-no-fork
+								</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
 				<plugin>
+					<!-- config for jar -->
+					<groupId>
+						org.apache.maven.plugins
+						</groupId>
+					<artifactId>
+						maven-jar-plugin
+						</artifactId>
+					<version>
+						3.1.0
+						</version>
+					<configuration>
+						<archive>
+							<index>
+								true
+								</index>
+							<manifest>
+								<addClasspath>
+									true
+									</addClasspath>
+								</manifest>
+							<manifestEntries>
+								<mode>
+									development
+									</mode>
+								<Automatic-Module-Name>
+									ws.nzen.format.eno.note_enojes
+									</Automatic-Module-Name>
+								</manifestEntries>
+							</archive>
+						</configuration>
+					</plugin>
+				<plugin>
+					<!-- sonatype insists on a javadoc jar -->
+					<groupId>
+						org.apache.maven.plugins
+						</groupId>
+					<artifactId>
+						maven-javadoc-plugin
+						</artifactId>
+					<version>
+						3.0.1
+						</version>
+					<executions>
+						<execution>
+							<id>
+								attach-javadocs
+								</id>
+							<goals>
+								<goal>
+									jar
+									</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				<plugin>
+					<!-- sonatype insists on a using gpg to sign the jars -->
+					<groupId>
+						org.apache.maven.plugins
+						</groupId>
+					<artifactId>
+						maven-gpg-plugin
+						</artifactId>
+					<version>
+						1.6
+						</version>
+					<executions>
+						<execution>
+							<id>
+								sign-artifacts
+								</id>
+							<phase>
+								verify
+								</phase>
+							<goals>
+								<goal>
+									sign
+									</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				<plugin>
+			    	<!-- skip tests without remembering -DskipTests -->
 					<groupId>
 						org.apache.maven.plugins
 					</groupId>
@@ -168,33 +338,54 @@
 						</skipTests>
 					</configuration>
 				</plugin>
-		</plugins>
-		</pluginManagement>
+			<plugin>
+		    	<!-- send releases to sonatype's server -->
+				<groupId>
+					org.sonatype.plugins
+					</groupId>
+				<artifactId>
+					nexus-staging-maven-plugin
+					</artifactId>
+				<version>
+					1.6.7
+					</version>
+				<extensions>
+					true
+					</extensions>
+				<configuration>
+					<serverId>
+						ossrh
+						</serverId>
+					<nexusUrl>
+						https://oss.sonatype.org/
+						</nexusUrl>
+					<autoReleaseAfterClose>
+						true
+						</autoReleaseAfterClose>
+					</configuration>
+				</plugin>
+			</plugins>
+		<!-- </pluginManagement> -->
 	</build>
-	<properties>
-	    <!-- jdk v3 is the maven default -->
-		<maven.compiler.source>
-			1.10
-		</maven.compiler.source>
-		<maven.compiler.target>
-			1.10
-		</maven.compiler.target>
-		<project.build.sourceEncoding>
-			UTF-8
-		</project.build.sourceEncoding>
-	</properties>
-	<description>
-		Locale classes from eno-locale gettext files
-	</description>
-	<name>
-		note_enojes
-	</name>
-	<url>
-		https://github.com/Nzen/note_enojes
-	</url>
 	<scm>
+		<connection>
+			scm:git:https://github.com/Nzen/note_enojes.git
+			</connection>
+		<developerConnection>
+			scm:git:https://github.com/Nzen/note_enojes.git
+			</developerConnection>
 		<url>
-			https://github.com/Nzen/note_enojes.git
-		</url>
-	</scm>
-</project>
+			https://github.com/Nzen/note_enojes
+			</url>
+		</scm>
+	<distributionManagement>
+		<snapshotRepository>
+			<id>
+				ossrh
+				</id>
+			<url>
+				https://oss.sonatype.org/content/repositories/snapshots
+				</url>
+			</snapshotRepository>
+		</distributionManagement>
+	</project>
