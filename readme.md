@@ -14,7 +14,7 @@ Eno is a document / data structure specification. Its authors provide a json mes
 ```xml
 		<dependency>
 			<groupId>
-				ws.nzen.format
+				ws.nzen.format.eno
 			</groupId>
 			<artifactId>
 				note_enojes
@@ -28,7 +28,7 @@ Eno is a document / data structure specification. Its authors provide a json mes
 #### Gradle dependence declaration
 
 ```
-	'ws.nzen.format:note_enojes:2.0'
+	'ws.nzen.format.eno:note_enojes:2.0'
 ```
 
 This will require Apache's commons cli and Alibaba's fastjson library. It's worth noting that Note Enojes hasn't been uploaded to maven central.

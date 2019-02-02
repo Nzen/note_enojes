@@ -20,6 +20,9 @@
 	<version>
 		2.0-SNAPSHOT
 		</version>
+	<packaging>
+		jar
+		</packaging>
 	<description>
 		ResourceBundle properties and list classes from eno-locale json message catalog.
 		</description>
@@ -29,9 +32,6 @@
 	<url>
 		https://github.com/Nzen/note_enojes
 		</url>
-	<packaging>
-		jar
-		</packaging>
 	<inceptionYear>
 		2018
 		</inceptionYear>
@@ -124,248 +124,264 @@
 			</dependency>
 		</dependencies>
 	<build>
-		<!-- <pluginManagement> I can't tell if this helps or hurts -->
-		    <plugins>
-				<!-- use java 10 jdk, if not default -->
-				<plugin>
-					<groupId>
-						org.apache.maven.plugins
-						</groupId>
-					<artifactId>
-						maven-toolchains-plugin
-						</artifactId>
-					<version>
-						1.1
-						</version>
-					<configuration>
-						<toolchains>
-							<jdk>
-								<version>
-									[1.8,)
-									</version>
-								</jdk>
-							</toolchains>
-						</configuration>
-					<executions>
-						<execution>
-							<goals>
-								<goal>
-									toolchain
-									</goal>
-								</goals>
-							</execution>
-						</executions>
-					</plugin>
-				<plugin>
-					<!-- compile with java v9+ -->
-					<groupId>
-						org.apache.maven.plugins
-						</groupId>
-					<artifactId>
-						maven-compiler-plugin
-						</artifactId>
-					<version>
-						3.8.0
-						</version>
-					<configuration>
-						<!-- For java 9+
+		<plugins>
+			<plugin>
+			<!-- use java 10 jdk, if not default -->
+				<groupId>
+					org.apache.maven.plugins
+					</groupId>
+				<artifactId>
+					maven-toolchains-plugin
+					</artifactId>
+				<version>
+					1.1
+					</version>
+				<configuration>
+					<toolchains>
+						<jdk>
+							<version>
+								[1.8,)
+								</version>
+							</jdk>
+						</toolchains>
+					</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>
+								toolchain
+								</goal>
+							</goals>
+						</execution>
+					</executions>
+				</plugin>
+			<plugin>
+				<!-- compile with java v9+ -->
+				<groupId>
+					org.apache.maven.plugins
+					</groupId>
+				<artifactId>
+					maven-compiler-plugin
+					</artifactId>
+				<version>
+					3.8.0
+					</version>
+				<configuration>
+					<!-- For java 9+
+					<source>
+						1.11
+						</source>
+					<target>
+						1.11
+						</target>
+					<release>
+						11
+						</release>
+						-->
+					<!-- For java 8 holdouts -->
 						<source>
-							1.11
+							1.8
 							</source>
 						<target>
-							1.11
+							1.8
 							</target>
-						<release>
-							11
-							</release>
-							-->
-						<!-- For java 8 holdouts -->
-							<source>
-								1.8
-								</source>
-							<target>
-								1.8
-								</target>
-						<encoding>
-							UTF-8
-							</encoding>
-						</configuration>
-					<!-- For java 8 holdouts ; remove for java 9+ -->
-					<executions>
-						<execution>
-							<id>
-								default-compile
-								</id>
-							<phase>
-								compile
-								</phase>
-							<configuration>
-								<excludes>
-									<exclude>
-										**/module-info.java
-										</exclude>
-									</excludes>
-								</configuration> 
-							<goals>
-								<goal>
-									compile
-									</goal>
-								</goals>
-							</execution>                  
-						</executions>
-					</plugin>
-			    <plugin>
-		    	<!-- make source jar -->
-					<groupId>
-						org.apache.maven.plugins
-						</groupId>
-					<artifactId>
-						maven-source-plugin
-						</artifactId>
-					<version>
-						3.0.1
-						</version>
-					<executions>
-						<execution>
-							<id>
-								attach-sources
-								</id>
-							<goals>
+					<encoding>
+						UTF-8
+						</encoding>
+					</configuration>
+				<!-- For java 8 holdouts ; remove for java 9+ -->
+				<executions>
+					<execution>
+						<id>
+							default-compile
+							</id>
+						<phase>
+							compile
+							</phase>
+						<configuration>
+							<excludes>
+								<exclude>
+									**/module-info.java
+									</exclude>
+								</excludes>
+							</configuration> 
+						<goals>
 							<goal>
-								jar-no-fork
+								compile
 								</goal>
-								</goals>
-							</execution>
-						</executions>
-					</plugin>
-				<plugin>
-					<!-- config for jar -->
-					<groupId>
-						org.apache.maven.plugins
-						</groupId>
-					<artifactId>
-						maven-jar-plugin
-						</artifactId>
-					<version>
-						3.1.0
-						</version>
-					<configuration>
-						<archive>
-							<index>
+							</goals>
+						</execution>  
+					<execution>
+						<id>
+							default-testCompile
+							</id>
+						<phase>
+							test-compile
+							</phase>
+						<goals>
+							<goal>
+								testCompile
+								</goal>
+							</goals>
+						<configuration>
+							<skip>
 								true
-								</index>
-							<manifest>
-								<addClasspath>
-									true
-									</addClasspath>
-								</manifest>
-							<manifestEntries>
-								<mode>
-									development
-									</mode>
-								<Automatic-Module-Name>
-									ws.nzen.format.eno.note_enojes
-									</Automatic-Module-Name>
-								</manifestEntries>
-							</archive>
-						</configuration>
-					</plugin>
-				<plugin>
-					<!-- sonatype insists on a javadoc jar -->
-					<groupId>
-						org.apache.maven.plugins
-						</groupId>
-					<artifactId>
-						maven-javadoc-plugin
-						</artifactId>
-					<version>
-						3.0.1
-						</version>
-					<executions>
-						<execution>
-							<id>
-								attach-javadocs
-								</id>
-							<goals>
-								<goal>
-									jar
-									</goal>
-								</goals>
-							</execution>
-						</executions>
-					</plugin>
-				<plugin>
-					<!-- sonatype insists on a using gpg to sign the jars -->
-					<groupId>
-						org.apache.maven.plugins
-						</groupId>
-					<artifactId>
-						maven-gpg-plugin
-						</artifactId>
-					<version>
-						1.6
-						</version>
-					<executions>
-						<execution>
-							<id>
-								sign-artifacts
-								</id>
-							<phase>
-								verify
-								</phase>
-							<goals>
-								<goal>
-									sign
-									</goal>
-								</goals>
-							</execution>
-						</executions>
-					</plugin>
-				<plugin>
-			    	<!-- skip tests without remembering -DskipTests -->
-					<groupId>
-						org.apache.maven.plugins
+								</skip>
+							</configuration>
+					</execution>                
+					</executions>
+				</plugin>
+		    <plugin>
+	    		<!-- make source jar -->
+				<groupId>
+					org.apache.maven.plugins
 					</groupId>
-					<artifactId>
-						maven-surefire-plugin
+				<artifactId>
+					maven-source-plugin
 					</artifactId>
-					<version>
-						2.12.4
+				<version>
+					3.0.1
 					</version>
-					<configuration>
-						<skipTests>
+				<executions>
+					<execution>
+						<id>
+							attach-sources
+							</id>
+						<goals>
+						<goal>
+							jar-no-fork
+							</goal>
+							</goals>
+						</execution>
+					</executions>
+				</plugin>
+			<plugin>
+				<!-- config for jar -->
+				<groupId>
+					org.apache.maven.plugins
+					</groupId>
+				<artifactId>
+					maven-jar-plugin
+					</artifactId>
+				<version>
+					3.1.0
+					</version>
+				<configuration>
+					<archive>
+						<index>
 							true
-						</skipTests>
+							</index>
+						<manifest>
+							<addClasspath>
+								true
+								</addClasspath>
+							</manifest>
+						<manifestEntries>
+							<mode>
+								development
+								</mode>
+							<Automatic-Module-Name>
+								ws.nzen.format.eno.note_enojes
+								</Automatic-Module-Name>
+							</manifestEntries>
+						</archive>
 					</configuration>
 				</plugin>
 			<plugin>
-		    	<!-- send releases to sonatype's server -->
+				<!-- sonatype insists on a javadoc jar -->
 				<groupId>
-					org.sonatype.plugins
+					org.apache.maven.plugins
 					</groupId>
 				<artifactId>
-					nexus-staging-maven-plugin
+					maven-javadoc-plugin
 					</artifactId>
 				<version>
-					1.6.7
+					3.0.1
 					</version>
-				<extensions>
-					true
-					</extensions>
-				<configuration>
-					<serverId>
-						ossrh
-						</serverId>
-					<nexusUrl>
-						https://oss.sonatype.org/
-						</nexusUrl>
-					<autoReleaseAfterClose>
-						true
-						</autoReleaseAfterClose>
-					</configuration>
+				<executions>
+					<execution>
+						<id>
+							attach-javadocs
+							</id>
+						<goals>
+							<goal>
+								jar
+								</goal>
+							</goals>
+						</execution>
+					</executions>
 				</plugin>
-			</plugins>
-		<!-- </pluginManagement> -->
+			<plugin>
+				<!-- sonatype insists on a using gpg to sign the jars -->
+				<groupId>
+					org.apache.maven.plugins
+					</groupId>
+				<artifactId>
+					maven-gpg-plugin
+					</artifactId>
+				<version>
+					1.6
+					</version>
+				<executions>
+					<execution>
+						<id>
+							sign-artifacts
+							</id>
+						<phase>
+							verify
+							</phase>
+						<goals>
+							<goal>
+								sign
+								</goal>
+							</goals>
+						</execution>
+					</executions>
+				</plugin>
+			<plugin>
+		    	<!-- skip tests without remembering -DskipTests -->
+				<groupId>
+					org.apache.maven.plugins
+				</groupId>
+				<artifactId>
+					maven-surefire-plugin
+				</artifactId>
+				<version>
+					2.12.4
+				</version>
+				<configuration>
+					<skipTests>
+						true
+					</skipTests>
+				</configuration>
+			</plugin>
+		<plugin>
+		    <!-- send releases to sonatype's server -->
+			<groupId>
+				org.sonatype.plugins
+				</groupId>
+			<artifactId>
+				nexus-staging-maven-plugin
+				</artifactId>
+			<version>
+				1.6.7
+				</version>
+			<extensions>
+				true
+				</extensions>
+			<configuration>
+				<serverId>
+					ossrh
+					</serverId>
+				<nexusUrl>
+					https://oss.sonatype.org/
+					</nexusUrl>
+				<autoReleaseAfterClose>
+					false
+					</autoReleaseAfterClose>
+				</configuration>
+			</plugin>
+		</plugins>
 	</build>
 	<scm>
 		<connection>
@@ -387,5 +403,13 @@
 				https://oss.sonatype.org/content/repositories/snapshots
 				</url>
 			</snapshotRepository>
-		</distributionManagement>
+		<repository>
+			<id>
+				ossrh
+			</id>
+			<url>
+				https://oss.sonatype.org/service/local/staging/deploy/maven2/
+			</url>
+			</repository>
+	</distributionManagement>
 	</project>
