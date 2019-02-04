@@ -4,7 +4,7 @@ package ws.nzen.format.eno;
 /**  */
 public enum EnoLocaleVariables
 {
-	LINE( "[LINE]", ",integer" ),
+	LINE( "[LINE]", ",number" ),
 	NAME( "[NAME]", "" ),
 	SET_ELEM( "[FIELDSET_NAME]", "" ),
 	ENTRY( "[ENTRY_NAME]", "" ),
