@@ -9,7 +9,6 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
-import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.text.MessageFormat;
@@ -23,7 +22,8 @@ import java.util.NavigableMap;
 import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.TreeMap;
-import java.util.stream.Stream;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
@@ -117,6 +117,7 @@ public class BundlesEnoResources
 				.toLowerCase().equals( "properties" );
 		Map<String, String> keyAlias = new  TreeMap<>(); // NOTE so these are sorted
 		Map<String,List<String>> messages = new HashMap<>();
+		Map<String, String> keysWithVars = new  HashMap<>();
 		int idInd = 0;
 		for ( String category : langMessages.keySet() )
 		{
@@ -139,6 +140,7 @@ public class BundlesEnoResources
 				if ( shouldReplaceVariables )
 				{
 					msgValue = replaceVarsForMessageFormat( msgValue );
+					keysWithVars.put( category + idInd, msgValue );
 				}
 				if ( resourceIsProperties )
 				{
@@ -158,7 +160,7 @@ public class BundlesEnoResources
 				targetFolder, resourceIsProperties, version );
 		if ( config.getProperty( begPropIdMap, "false" ).equals( "true" ) )
 		{
-			emitKeyAlias( keyAlias, targetFolder, version );
+			emitKeyAlias( keyAlias, targetFolder, version, keysWithVars );
 		}
 	}
 
@@ -175,7 +177,8 @@ public class BundlesEnoResources
 		int indOfReplace = 0, prevInd = 0, variableInd = 0;
 		NavigableMap<Integer, EnoLocaleVariables> indType = new TreeMap<>();
 		final String endOfLambda = "=> ";
-		prevInd = msgValue.indexOf( endOfLambda ) + endOfLambda.length(); // NOTE skipping lambda "(args) =>"
+		prevInd = msgValue.indexOf( endOfLambda ) + endOfLambda.length();
+			// NOTE skipping lambda "(args) =>"
 		while ( true )
 		{
 			indType.clear();
@@ -370,45 +373,89 @@ public class BundlesEnoResources
 
 	/** assumes similar values to ListResourceBundle */
 	private void emitKeyAlias( Map<String, String> keyAlias, Path targetFolder,
-			String version )
+			String version, Map<String, String> keysWithVars )
 	{
+		final String here = cl +"eka ";
 		int minForEachCategory = 50;
 		StringBuilder fileContent = new StringBuilder( keyAlias.size() * minForEachCategory );
 		String aliasTemplate = templateForKeyAlias();
 		String filePackage = config.getProperty( begPropPackage, "" );
 		filePackage = ( ! filePackage.isEmpty() )
 				? "package "+ filePackage +";\n" : filePackage;
-		int ind = 0, enoughForDistinct = 3;
-		String category = "";
-		for ( String alias : keyAlias.keySet() )
+		final String varFormat = "[^\\\\{]*" + "(\\{\\d" + "(\\,\\w+)?" + "\\})";
+		try
 		{
-			if ( !  alias.substring( 0, enoughForDistinct ).equals( category ) )
+			Pattern fsmSpec = Pattern.compile( varFormat );
+			int ind = 0, enoughForDistinct = 3;
+			String category = "";
+			for ( String alias : keyAlias.keySet() )
 			{
-				category = alias.substring( 0, enoughForDistinct ); 
+				if ( !  alias.substring( 0, enoughForDistinct ).equals( category ) )
+				{
+					category = alias.substring( 0, enoughForDistinct ); 
+					fileContent.append( System.lineSeparator() );
+					fileContent.append( "\t// " );
+					fileContent.append( alias.substring( 0, alias.length() -1 ) ); // NOTE removing the index 
+					fileContent.append( System.lineSeparator() );
+					ind = 0;
+				}
+				String enoId = keyAlias.get( alias );
+				fileContent = withRelevantJavadoc( fileContent,
+						keysWithVars.get( alias ), fsmSpec );
+				fileContent.append( "\tpublic static final String " );
+				fileContent.append( enoId.replace( ' ', '_' ).toUpperCase() );
+				fileContent.append( " = \"" );
+				fileContent.append( enoId );
+				fileContent.append( "\";" ); 
 				fileContent.append( System.lineSeparator() );
-				fileContent.append( "\t// " );
-				fileContent.append( alias.substring( 0, alias.length() -1 ) ); // NOTE removing the index 
-				fileContent.append( System.lineSeparator() );
-				ind = 0;
+				ind++;
+				if ( ind > 5 )
+				{
+					ind = 0; 
+					fileContent.append( System.lineSeparator() );
+				}
 			}
-			String enoId = keyAlias.get( alias );
-			fileContent.append( "\tpublic static final String " );
-			fileContent.append( enoId.replace( ' ', '_' ).toUpperCase() );
-			fileContent.append( " = \"" );
-			fileContent.append( enoId );
-			fileContent.append( "\";" ); 
-			fileContent.append( System.lineSeparator() );
-			ind++;
-			if ( ind > 5 )
-			{
-				ind = 0; 
-				fileContent.append( System.lineSeparator() );
-			}
+		}
+		catch ( IllegalArgumentException iae )
+		{
+			System.err.println( here +"couldn't interpret javadoc"
+					+" as {0} because "+ iae );
 		}
 		String className = "EnoAlias";
 		writeTo( targetFolder.resolve( className +".java" ),
 				String.format( aliasTemplate, filePackage, version,
 						className, fileContent.toString() ) );
+	}
+
+
+	private StringBuilder withRelevantJavadoc(StringBuilder fileContent,
+			String localizedLineWithVars, Pattern fsmSpec ) throws IllegalArgumentException
+	{
+		if ( localizedLineWithVars == null || localizedLineWithVars.isEmpty()
+				|| ! localizedLineWithVars.contains( "{" ) )
+		{
+			return fileContent;
+		}
+		Matcher fsmRuntime = fsmSpec.matcher( localizedLineWithVars );
+		final int varInd = 1;
+		int cursorInd = 0;
+		String temp;
+		fileContent.append( "\t/** " );
+		while ( fsmRuntime.find( cursorInd ) )
+		{
+			temp = fsmRuntime.group( varInd );
+			if ( ! temp.contains( "," ) )
+			{
+				temp = temp.substring( 0, temp.length() -1 )
+						+ ",string}";
+			}
+			fileContent.append( temp );
+			fileContent.append( " " );
+			cursorInd = fsmRuntime.end();
+		}
+		fileContent.append( " */" );
+		fileContent.append( System.lineSeparator() );
+		return fileContent;
 	}
 
 
