@@ -1,5 +1,8 @@
+
 /* (for template) 1 is the package ; 2 is version ; 3 is class name ; 4 is the class body */
+
 %1$s
+
 /*
 %2$s
 */

@@ -1,0 +1,74 @@
+
+= Note_Enojes Changelog
+
+== Unreleased
+
+=== Added
+
+* 
+
+=== Changed
+
+* 
+
+=== Removed
+
+* 
+
+== [[2.0]] - 2019-11-10
+
+=== Added
+
+* Able to consume json input
+
+=== Changed
+
+* Changes package to localeparse to avoid j9 module collision
+
+=== Removed
+
+* No longer consumes po files
+
+== [[1.1]] - 2018-10-29
+
+=== Added
+
+* Emit key alias map
+
+== [[1.0]] - 2018-10-17
+
+=== Added
+
+* Able to emit list resource bundles
+* Able to emit property files
+* Consumes po file input
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

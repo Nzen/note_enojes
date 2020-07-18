@@ -1,3 +1,4 @@
+
 /* (for template) 1 is the package ; 2 is version comment ; 3 is class name
 	caller supplies body and closes the three braces */
 

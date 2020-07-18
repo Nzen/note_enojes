@@ -1,0 +1,41 @@
+
+# issue 200718_1341
+
+		title : Consume canon eno files
+
+		status : in progress
+
+		priority : highest
+
+		assignee : Nicholas Prado
+
+		-- desc
+		The canon eno locales project no longer provides a unified json file with all the languages together. While note_enojes could consume the generated javascript output, the author could change that format adversely as well. Parse the canon spedification.eno and individual po files, instead.
+		-- desc
+
+	>## yyMMdd hhMM zzz
+		>comment author : 
+		>-- comment
+
+		>-- comment
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
